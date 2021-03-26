@@ -1,0 +1,124 @@
+0000   21 00 60               LD   hl,$6000   ;This just loads the HL register with memory loactaion $6000
+0003   36 48                  LD   (hl),$48   ;This just loads the ascii value for H into Memory Location HL or $6000
+0005   11 00 20               LD   de,$2000   ;Where in ROM Your screen data is stored.
+0008   21 00 02               LD   hl,$0200   ;Emulated register address in memory
+000B   72                     LD   (hl),d   ;This just emulates a part of a register so we can use DE for ther things
+000C   23                     INC   hl   ;Increments HL so we can write the second half of our emulated register to memory
+000D   73                     LD   (hl),e   ;This just emulates a part of a register so we can use DE for other things
+000E   11 00 80               LD   de,$8000   ;Start of Video Memory On GB
+0011   21 02 02               LD   hl,$0202   ;Emulated register address in memory
+0014   72                     LD   (hl),d   ;This just emulates a part of a register so we can use DE for other things
+0015   23                     INC   hl   ;Increments HL so we can write the second half of our emulated register to memory
+0016   73                     LD   (hl),e   ;This just emulates a part of a register so we can use DE for other things
+0017   11 08 00               LD   de,$0008   ;How many Tiles we want to load into Video Memory. Each tile is 8 bytes.
+001A   21 04 02               LD   hl,$0204   ;Emulated register address in memory
+001D   72                     LD   (hl),d   ;This just emulates a part of a register so we can use DE for other things
+001E   23                     INC   hl   
+001F   73                     LD   (hl),e   
+0020   CD 35 00               CALL   LDROMTVM   
+0023   01 00 01               LD   bc,$0100   
+0026   CD 5F 00               CALL   ADDRFIND   
+0029   54 5D                  LD   de,hl   
+002B   21 00 60               LD   hl,$6000   
+002E   01 01 00               LD   bc,$0001   
+0031   CD 73 00               CALL   LDVMEMTVRM   
+0034   76                     HALT      
+0035                             ;Load HL with Source
+0035                             ;Load DE with Destination
+0035                             ;Load BC with Byte Count
+0035                             ;Each GB Tile is 8 bytes
+0035                             ;So load BC with how many tiles you want to copy over *8
+0035                             ;Tiles should be stored in GB ROM as 1 tile = 8 bytes
+0035                             ;This just copied over from rom to ram.
+0035   3A 00 02     LDROMTVM:   LD   a,($0200)   
+0038   67                     LD   h,a   
+0039   3A 01 02               LD   a,($0201)   
+003C   6F                     LD   l,a   
+003D   3A 02 02               LD   a,($0202)   
+0040   57                     LD   d,a   
+0041   3A 03 02               LD   a,($0203)   
+0044   5F                     LD   e,a   
+0045   3A 04 02               LD   a,($0204)   
+0048   47                     LD   b,a   
+0049   3A 05 02               LD   a,($0205)   
+004C   4F                     LD   c,a   
+004D   04                     INC   b   
+004E   0C                     INC   c   
+004F   C3 56 00               JP   SKROMTVM   
+0052   7E           LPROMTVM:   LD   a,(hl)   ;loop start
+0053   23                     INC   hl   
+0054   12                     LD   (de),a   
+0055   13                     INC   de   
+0056   0D           SKROMTVM:   DEC   c   ;Skip start
+0057   C2 52 00               JP   nz,LPROMTVM   ;goto loop
+005A   05                     DEC   b   
+005B   C2 52 00               JP   nz,LPROMTVM   ;goto loop
+005E   C9                     RET      
+005F                             ;This just figures out an address to goto to store
+005F                             ;a tile in Video Ram.
+005F                             ;Load BC with X and Y data.
+005F                             ; B = X and C = Y
+005F                             ;Output will be in Register HL
+005F   79           ADDRFIND:   LD   a,c   
+0060   48                     LD   c,b   
+0061   47                     LD   b,a   
+0062   21 00 98               LD   hl,$9800   
+0065   AF                     XOR   a   
+0066   CB 18                  RR   b   
+0068   1F                     RRA      
+0069   CB 18                  RR   b   
+006B   1F                     RRA      
+006C   CB 18                  RR   b   
+006E   1F                     RRA      
+006F   B1                     OR   c   
+0070   4F                     LD   c,a   
+0071   09                     ADD   hl,bc   
+0072   C9                     RET      
+0073                             ;This just copies from Video Memory(Where tile data is stored)
+0073                             ;to Video Ram.
+0073                             ;Load HL with your source
+0073                             ;Load DE with your destination
+0073                             ;Load BC with you byte count
+0073   04           LDVMEMTVRM:   INC   b   
+0074   0C                     INC   c   
+0075   C3 7E 00               JP   SKIPLDVRM   
+0078   F3           LOOPLDVRM:   DI      
+0079                             ;           CALL    WAITVRM
+0079   7E                     LD   a,(hl)   
+007A   23                     INC   hl   
+007B   12                     LD   (de),a   
+007C   FB                     EI      
+007D   13                     INC   de   
+007E   0D           SKIPLDVRM:   DEC   c   
+007F   C2 78 00               JP   nz,LOOPLDVRM   
+0082   05                     DEC   b   
+0083   C2 78 00               JP   nz,LOOPLDVRM   
+0086   C9                     RET      
+0087                             ;This just waits for the screen to be ready to
+0087                             ;recieve data. Since we are not on a gameboy right
+0087                             ;now, we do not need this and can comment out the
+0087                             ;CALL   WAITVRM
+0087   3A 41 FF     WAITVRMOK:   LD   a,($FF41)   ; <---+
+008A   E6 04                  AND   $04   ;     |
+008C   C2 87 00               JP   nz,WAITVRMOK   ; ----+
+008F   C9                     RET      
+
+
+LDROMTVM:           0035 DEFINED AT LINE 33
+                    > USED AT LINE 18
+LPROMTVM:           0052 DEFINED AT LINE 48
+                    > USED AT LINE 53
+                    > USED AT LINE 55
+SKROMTVM:           0056 DEFINED AT LINE 52
+                    > USED AT LINE 47
+ADDRFIND:           005F DEFINED AT LINE 63
+                    > USED AT LINE 20
+LDVMEMTVRM:         0073 DEFINED AT LINE 86
+                    > USED AT LINE 24
+LOOPLDVRM:          0078 DEFINED AT LINE 89
+                    > USED AT LINE 97
+                    > USED AT LINE 99
+SKIPLDVRM:          007E DEFINED AT LINE 96
+                    > USED AT LINE 88
+WAITVRMOK:          0087 DEFINED AT LINE 105
+                    > USED AT LINE 107

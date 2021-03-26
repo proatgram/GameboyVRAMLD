@@ -1,0 +1,109 @@
+            LD      hl,$6000 ;This just loads the HL register with memory loactaion $6000
+            LD      (hl),$48 ;This just loads the ascii value for H into Memory Location HL or $6000
+            LD      de,$2000 ;Where in ROM Your screen data is stored.
+            LD      hl,$0200 ;Emulated register address in memory
+            LD      (hl),d ;This just emulates a part of a register so we can use DE for ther things
+            INC     hl ;Increments HL so we can write the second half of our emulated register to memory
+            LD      (hl),e ;This just emulates a part of a register so we can use DE for other things
+            LD      de,$8000 ;Start of Video Memory On GB
+            LD      hl,$0202 ;Emulated register address in memory
+            LD      (hl),d ;This just emulates a part of a register so we can use DE for other things
+            INC     hl ;Increments HL so we can write the second half of our emulated register to memory
+            LD      (hl),e ;This just emulates a part of a register so we can use DE for other things
+            LD      de,$0008 ;How many Tiles we want to load into Video Memory. Each tile is 8 bytes.
+            LD      hl,$0204 ;Emulated register address in memory
+            LD      (hl),d ;This just emulates a part of a register so we can use DE for other things
+            INC     hl 
+            LD      (hl),e 
+            CALL    LDROMTVM 
+            LD      bc,$0100 
+            CALL    ADDRFIND 
+            LD      de,hl 
+            LD      hl,$6000 
+            LD      bc,$0001 
+            CALL    LDVMEMTVRM 
+            HALT     
+;Load HL with Source
+;Load DE with Destination
+;Load BC with Byte Count
+;Each GB Tile is 8 bytes
+;So load BC with how many tiles you want to copy over *8
+;Tiles should be stored in GB ROM as 1 tile = 8 bytes
+;This just copied over from rom to ram.
+LDROMTVM:   LD      a,($0200) 
+            LD      h,a 
+            LD      a,($0201) 
+            LD      l,a 
+            LD      a,($0202) 
+            LD      d,a 
+            LD      a,($0203) 
+            LD      e,a 
+            LD      a,($0204) 
+            LD      b,a 
+            LD      a,($0205) 
+            LD      c,a 
+            INC     b 
+            INC     c 
+            JP      SKROMTVM 
+LPROMTVM:   LD      a,(hl) ;loop start
+            INC     hl 
+            LD      (de),a 
+            INC     de 
+SKROMTVM:   DEC     c ;Skip start
+            JP      nz,LPROMTVM ;goto loop
+            DEC     b 
+            JP      nz,LPROMTVM ;goto loop
+            RET      
+
+;This just figures out an address to goto to store
+;a tile in Video Ram.
+;Load BC with X and Y data.
+; B = X and C = Y
+;Output will be in Register HL
+ADDRFIND:   LD      a,c 
+            LD      c,b 
+            LD      b,a 
+
+            LD      hl,$9800 
+            XOR     a 
+
+            RR      b 
+            RRA      
+            RR      b 
+            RRA      
+            RR      b 
+            RRA      
+            OR      c 
+            LD      c,a 
+            ADD     hl,bc 
+            RET      
+;This just copies from Video Memory(Where tile data is stored)
+;to Video Ram.
+;Load HL with your source
+;Load DE with your destination
+;Load BC with you byte count
+
+LDVMEMTVRM: INC     b 
+            INC     c 
+            JP      SKIPLDVRM 
+LOOPLDVRM:  DI       
+;           CALL    WAITVRM
+            LD      a,(hl) 
+            INC     hl 
+            LD      (de),a 
+            EI       
+            INC     de 
+SKIPLDVRM:  DEC     c 
+            JP      nz,LOOPLDVRM 
+            DEC     b 
+            JP      nz,LOOPLDVRM 
+            RET      
+;This just waits for the screen to be ready to
+;recieve data. Since we are not on a gameboy right
+;now, we do not need this and can comment out the
+;CALL   WAITVRM
+WAITVRMOK:  LD      a,($FF41)       ; <---+
+            AND     $04             ;     |
+            JP      nz,WAITVRMOK    ; ----+
+            RET      
+

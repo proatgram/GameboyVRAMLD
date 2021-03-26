@@ -1,0 +1,47 @@
+LDROMTVM:   LD      a,($0200) 
+            LD      h,a 
+            LD      a,($0201) 
+            LD      l,a 
+            LD      a,($0202) 
+            LD      d,a 
+            LD      a,($0203) 
+            LD      e,a 
+            LD      a,($0204) 
+            LD      b,a 
+            LD      a,($0205) 
+            LD      c,a 
+            INC     b 
+            INC     c 
+            JP      SKROMTVM 
+LPROMTVM:   LD      a,(hl) ;loop start
+            INC     hl 
+            LD      (de),a 
+            INC     de 
+SKROMTVM:   DEC     c ;Skip start
+            JP      nz,LPROMTVM ;goto loop
+            DEC     b 
+            JP      nz,LPROMTVM ;goto loop
+            RET      
+
+;This just figures out an address to goto to store
+;a tile in Video Ram.
+;Load BC with X and Y data.
+; B = X and C = Y
+;Output will be in Register HL
+ADDRFIND:   LD      a,c 
+            LD      c,b 
+            LD      b,a 
+
+            LD      hl,$9800 
+            XOR     a 
+
+            RR      b 
+            RRA      
+            RR      b 
+            RRA      
+            RR      b 
+            RRA      
+            OR      c 
+            LD      c,a 
+            ADD     hl,bc 
+            RET      
